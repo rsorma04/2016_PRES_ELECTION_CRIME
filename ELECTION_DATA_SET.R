@@ -10,10 +10,11 @@ state_df_file <- data.frame(read.csv("STATE_ABBREVIATIONS.csv"), stringsAsFactor
 # Turn state abbreviation from a factor to a character.
 state_df_file$ABBREVIATION <- as.character(state_df_file$ABBREVIATION)
 
+nrow(state_df_file)
 
 data_two <- data.frame("raw_results" = as.character(0), stringsAsFactors=FALSE)
-for (i in 1:10) {
-  #
+for (i in 1:nrow(state_df_file)) {
+  
   # Iterate through the current state abbreviation.
   state_abb <- subset(state_df_file$ABBREVIATION, state_df_file$ID == i)
   # Get the first part of the url.
