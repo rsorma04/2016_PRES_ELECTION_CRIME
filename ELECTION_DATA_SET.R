@@ -13,7 +13,7 @@ state_df_file$ABBREVIATION <- as.character(state_df_file$ABBREVIATION)
 
 data_two <- data.frame("raw_results" = as.character(0), stringsAsFactors=FALSE)
 for (i in 1:10) {
-  
+  #
   # Iterate through the current state abbreviation.
   state_abb <- subset(state_df_file$ABBREVIATION, state_df_file$ID == i)
   # Get the first part of the url.
