@@ -1,9 +1,9 @@
+setwd("C:/Users/rocco.sorma/Desktop/R_PROGRAMMING/2016_PRES_ELECTION_CRIME")
+
 library(httr)
 library(stringi)
 library(purrr)
 library(dplyr)
-
-setwd("C:/Users/rocco.sorma/Desktop/R_PROGRAMMING/2016_ELECTION_CRIME_ANALYSIS")
 
 # Bring in file containing state abbreviations.
 state_df_file <- data.frame(read.csv("STATE_ABBREVIATIONS.csv"), stringsAsFactors=FALSE)
@@ -12,7 +12,8 @@ state_df_file$ABBREVIATION <- as.character(state_df_file$ABBREVIATION)
 
 
 data_two <- data.frame("raw_results" = as.character(0), stringsAsFactors=FALSE)
-for (i in 1:nrow(state_df_file)) {
+for (i in 1:10) {
+  
   # Iterate through the current state abbreviation.
   state_abb <- subset(state_df_file$ABBREVIATION, state_df_file$ID == i)
   # Get the first part of the url.
@@ -25,8 +26,52 @@ for (i in 1:nrow(state_df_file)) {
   
   res <- GET(url)
   dat <- readLines(textConnection(content(res, as="text")))
-  data_two <- rbind(data_two, dat)
+  
+  # Format list of Get list of candidates.
+  stri_split_fixed(dat[2], "|")[[1]] %>%
+    stri_replace_last_fixed(";", "") %>% 
+    stri_split_fixed(";", 3) %>% 
+    map_df(~setNames(as.list(.), c("rep_id", "last", "first"))) -> candidates
+  
+  candidates <- subset(candidates, candidates$last == 'Trump' | candidates$last == 'Clinton' |
+                         candidates$last == 'Johnson' | candidates$last == 'Stein')
+  
+  #print(candidates)
+  
+  str_one <- paste("^", state_abb, ";P;G", sep = "")
+  str_two <- paste("^", state_abb, ";P;G;", sep = "")
+  
+  # Format list of Get list of candidates.
+  stri_split_fixed(dat[2], "|")[[1]] %>%
+    stri_replace_last_fixed(";", "") %>% 
+    stri_split_fixed(";", 3) %>% 
+    map_df(~setNames(as.list(.), c("rep_id", "last", "first"))) -> candidates
+  
+  dat[stri_detect_regex(dat, str_one)] %>% 
+    stri_replace_first_regex(str_two, "") %>% 
+    map_df(function(x) {
+      
+      county_results <- stri_split_fixed(x, "||", 2)[[1]]
+      
+      stri_replace_last_fixed(county_results[1], ";;", "") %>% 
+        stri_split_fixed(";") %>% 
+        map_df(~setNames(as.list(.), c("fips", "name", "x1", "reporting", "x2", "x3", "x4"))) -> county_prefix
+      
+      stri_split_fixed(county_results[2], "|")[[1]] %>% 
+        stri_split_fixed(";") %>% 
+        map_df(~setNames(as.list(.), c("rep_id", "party", "count", "pct", "x5", "x6", "x7", "x8", "candidate_idx"))) %>% 
+        left_join(candidates, by="rep_id") -> df
+      
+      df$fips <- county_prefix$fips
+      df$name <- county_prefix$name
+      df$reporting <- county_prefix$reporting
+      
+      select(df, -starts_with("x"))
+      
+    }) -> results_one
 }
+
+results_one
 
 data_two
 
