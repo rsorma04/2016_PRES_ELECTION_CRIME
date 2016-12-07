@@ -10,9 +10,7 @@ state_df_file <- data.frame(read.csv("STATE_ABBREVIATIONS.csv"), stringsAsFactor
 # Turn state abbreviation from a factor to a character.
 state_df_file$ABBREVIATION <- as.character(state_df_file$ABBREVIATION)
 
-nrow(state_df_file)
-
-data_two <- data.frame("raw_results" = as.character(0), stringsAsFactors=FALSE)
+county_results <- data.frame()
 for (i in 1:nrow(state_df_file)) {
   
   # Iterate through the current state abbreviation.
@@ -33,12 +31,7 @@ for (i in 1:nrow(state_df_file)) {
     stri_replace_last_fixed(";", "") %>% 
     stri_split_fixed(";", 3) %>% 
     map_df(~setNames(as.list(.), c("rep_id", "last", "first"))) -> candidates
-  
-  candidates <- subset(candidates, candidates$last == 'Trump' | candidates$last == 'Clinton' |
-                         candidates$last == 'Johnson' | candidates$last == 'Stein')
-  
-  #print(candidates)
-  
+
   str_one <- paste("^", state_abb, ";P;G", sep = "")
   str_two <- paste("^", state_abb, ";P;G;", sep = "")
   
@@ -69,53 +62,17 @@ for (i in 1:nrow(state_df_file)) {
       
       select(df, -starts_with("x"))
       
-    }) -> results_one
+    }) -> results_county
+  # Filter to only include county results and 4 main candidates.
+  results_county <- subset(results_county, results_county$fips != 0 & 
+                             (results_county$last == "Trump" |
+                             results_county$last == "Clinton" |
+                             results_county$last == "Johnson" |
+                             results_county$last == "Stein"))
+  # Create a new field that contains the state abbreviation.
+  results_county$state <- substr(results_county$rep_id, 1, 2)
+  # Append the data frame with data from each iteration of the loop.
+  county_results <- rbind(county_results, results_county)
 }
 
-results_one
-
-data_two
-
-
-# Format list of Get list of candidates.
-stri_split_fixed(dat[2], "|")[[1]] %>%
-  stri_replace_last_fixed(";", "") %>% 
-  stri_split_fixed(";", 3) %>% 
-  map_df(~setNames(as.list(.), c("rep_id", "last", "first"))) -> candidates
-
-res <- GET("http://s3.amazonaws.com/origin-east-elections.politico.com/mapdata/2016/DC_20161108.xml")
-
-dat <- readLines(textConnection(content(res, as="text")))
-dat
-
-# Format list of Get list of candidates.
-stri_split_fixed(dat[2], "|")[[1]] %>%
-  stri_replace_last_fixed(";", "") %>% 
-  stri_split_fixed(";", 3) %>% 
-  map_df(~setNames(as.list(.), c("rep_id", "last", "first"))) -> candidates
-
-dat[stri_detect_regex(dat, "^DC;P;G")] %>% 
-  stri_replace_first_regex("^DC;P;G;", "") %>% 
-  map_df(function(x) {
-    
-    county_results <- stri_split_fixed(x, "||", 2)[[1]]
-   
-    stri_replace_last_fixed(county_results[1], ";;", "") %>% 
-      stri_split_fixed(";") %>% 
-      map_df(~setNames(as.list(.), c("fips", "name", "x1", "reporting", "x2", "x3", "x4"))) -> county_prefix
-    
-    stri_split_fixed(county_results[2], "|")[[1]] %>% 
-      stri_split_fixed(";") %>% 
-      map_df(~setNames(as.list(.), c("rep_id", "party", "count", "pct", "x5", "x6", "x7", "x8", "candidate_idx"))) %>% 
-      left_join(candidates, by="rep_id") -> df
-    
-    df$fips <- county_prefix$fips
-    df$name <- county_prefix$name
-    df$reporting <- county_prefix$reporting
-    
-    select(df, -starts_with("x"))
-    
-  }) -> results
-
-results_2 <- subset(results, results[[6]] %in% c("Clinton", "Trump") & results[[8]] != 0)
-results_2
+write.csv(county_results, "COUNTY_RESULTS.csv")
