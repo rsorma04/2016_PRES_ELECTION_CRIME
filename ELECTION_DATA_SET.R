@@ -69,10 +69,16 @@ for (i in 1:nrow(state_df_file)) {
                              results_county$last == "Clinton" |
                              results_county$last == "Johnson" |
                              results_county$last == "Stein"))
+  
   # Create a new field that contains the state abbreviation.
   results_county$state <- substr(results_county$rep_id, 1, 2)
+  
+  # Create a new field that concatenates the county and state abbreviation.
+  results_county$county_state <- paste(results_county$name, results_county$state, sep = " ")
+  
   # Append the data frame with data from each iteration of the loop.
   county_results <- rbind(county_results, results_county)
 }
+
 
 write.csv(county_results, "COUNTY_RESULTS.csv")
