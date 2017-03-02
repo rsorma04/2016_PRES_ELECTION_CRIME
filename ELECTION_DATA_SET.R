@@ -1,5 +1,3 @@
-setwd("C:/Users/rocco.sorma/Desktop/R_PROGRAMMING/2016_PRES_ELECTION_CRIME")
-
 library(httr)
 library(stringi)
 library(purrr)
